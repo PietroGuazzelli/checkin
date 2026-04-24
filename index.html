@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Check-in de Presença</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --card: #ffffff;
+      --primary: #143d2c;
+      --primary-2: #1f6f50;
+      --gold: #c7a24a;
+      --danger: #b91c1c;
+      --success: #15803d;
+      --muted: #64748b;
+      --border: #d7dde5;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: #111827;
+    }
+
+    header {
+      background: #001826;
+      padding: 0;
+      text-align: center;
+      border-bottom: 5px solid var(--gold);
+    }
+
+    .banner-evento {
+      width: 100%;
+      max-height: 330px;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 24px auto;
+      padding: 0 14px 40px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 850px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+      padding: 18px;
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      color: var(--primary);
+      font-size: 1.15rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    input[type="file"],
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-size: 1rem;
+      outline: none;
+      background: white;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      border-color: var(--primary-2);
+      box-shadow: 0 0 0 3px rgba(31, 111, 80, 0.15);
+    }
+
+    .checkin-destaque {
+      border: 2px solid rgba(199, 162, 74, 0.55);
+    }
+
+    .checkin-destaque input[type="text"] {
+      font-size: 1.25rem;
+      padding: 18px;
+    }
+
+    .hint {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover { background: var(--primary-2); }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .btn-danger {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .status-box {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      min-height: 96px;
+    }
+
+    .ok {
+      border-color: #86efac;
+      background: #f0fdf4;
+      color: var(--success);
+    }
+
+    .erro {
+      border-color: #fecaca;
+      background: #fef2f2;
+      color: var(--danger);
+    }
+
+    .alerta {
+      border-color: #fde68a;
+      background: #fffbeb;
+      color: #92400e;
+    }
+
+    .admin-lock {
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .admin-area { display: none; }
+    .admin-area.liberado { display: block; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    @media (max-width: 650px) {
+      .stats { grid-template-columns: 1fr; }
+    }
+
+    .stat {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1.8rem;
+      color: var(--primary);
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 9px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f1f5f9;
+      color: var(--primary);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: 430px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      margin-top: 12px;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      background: #e5e7eb;
+    }
+
+    .pill-ok {
+      background: #dcfce7;
+      color: var(--success);
+    }
+
+    .pill-no {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <img class="banner-evento" src="capa-pre-comuscs-cientifico.jpeg" alt="Capa Pré-Evento COMUSCS Científico" />
+  </header>
+
+  <main>
+    <section class="grid">
+      <div class="card checkin-destaque">
+        <h2>Confirmar presença</h2>
+
+        <label for="busca">Digite CPF, RA ou ID de inscrição</label>
+        <input id="busca" type="text" placeholder="Ex.: 12345678900, RA ou ID" autocomplete="off" disabled />
+
+        <div class="actions">
+          <button class="btn-primary" id="btnCheckin" disabled>Confirmar presença</button>
+          <button class="btn-secondary" id="btnLimparBusca" disabled>Limpar campo</button>
+        </div>
+
+        <div id="resultado" class="status-box alerta">
+          Envie a lista prévia na área administrativa para liberar o check-in.
+        </div>
+
+
+      </div>
+
+      <div class="card">
+        <h2>Área administrativa</h2>
+
+        <div id="adminLock" class="admin-lock">
+          <label for="senhaAdmin">Senha para enviar ou trocar a lista prévia</label>
+          <input id="senhaAdmin" type="password" placeholder="Digite a senha administrativa" />
+
+          <div class="actions">
+            <button class="btn-secondary" id="btnLiberarAdmin">Liberar upload</button>
+            <button class="btn-secondary" id="btnOcultarAdmin" style="display:none;">Ocultar área administrativa</button>
+          </div>
+
+          <p class="hint">
+            Essa área fica protegida para que o público veja principalmente o campo de confirmação de presença.
+          </p>
+        </div>
+
+        <div id="adminArea" class="admin-area">
+          <h2>Enviar lista prévia</h2>
+
+          <label for="arquivo">Arquivo Excel da lista</label>
+          <input id="arquivo" type="file" accept=".xlsx,.xls,.csv" />
+
+          <p class="hint">
+            A planilha deve ter cabeçalho na linha 1. O app considera:
+            <br><strong>ID de inscrição:</strong> coluna A
+            <br><strong>CPF:</strong> coluna J
+            <br><strong>RA:</strong> coluna O
+            <br>Ao exportar, será criada/adicionada a coluna P: <strong>Situação Presença</strong>.
+          </p>
+
+          <div class="stats">
+            <div class="stat">
+              <strong id="totalRegistros">0</strong>
+              <span>Registros carregados</span>
+            </div>
+            <div class="stat">
+              <strong id="totalPresentes">0</strong>
+              <span>Presenças OK</span>
+            </div>
+            <div class="stat">
+              <strong id="totalPendentes">0</strong>
+              <span>Pendentes</span>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn-primary" id="btnExportar" disabled>Exportar lista atualizada</button>
+            <button class="btn-danger" id="btnResetar" disabled>Resetar presenças</button>
+          </div>
+
+          <p class="hint">
+            Os botões de exportação e reset ficam disponíveis apenas após liberar a área administrativa com senha.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:16px;">
+      <h2>Pré-visualização da lista</h2>
+
+      <div class="table-wrap">
+        <table id="tabelaPreview">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>ID inscrição</th>
+              <th>Nome</th>
+              <th>CPF</th>
+              <th>RA</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="5">Nenhum arquivo carregado.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const SENHA_ADMIN = "COMUSCS2026"; // Altere aqui a senha administrativa
+
+    let dados = [];
+    let cabecalhos = [];
+    let nomeArquivoOriginal = "lista_presenca";
+
+    const COL_ID = 0;        // A
+    const COL_CPF = 9;       // J
+    const COL_RA = 14;       // O
+    const COL_PRESENCA = 15; // P
+
+    const arquivoInput = document.getElementById("arquivo");
+    const senhaAdminInput = document.getElementById("senhaAdmin");
+    const btnLiberarAdmin = document.getElementById("btnLiberarAdmin");
+    const btnOcultarAdmin = document.getElementById("btnOcultarAdmin");
+    const adminArea = document.getElementById("adminArea");
+
+    const buscaInput = document.getElementById("busca");
+    const btnCheckin = document.getElementById("btnCheckin");
+    const btnLimparBusca = document.getElementById("btnLimparBusca");
+    const btnExportar = document.getElementById("btnExportar");
+    const btnResetar = document.getElementById("btnResetar");
+    const resultado = document.getElementById("resultado");
+    const tabelaPreview = document.querySelector("#tabelaPreview tbody");
+
+    const totalRegistrosEl = document.getElementById("totalRegistros");
+    const totalPresentesEl = document.getElementById("totalPresentes");
+    const totalPendentesEl = document.getElementById("totalPendentes");
+
+    function liberarAdmin() {
+      if (senhaAdminInput.value === SENHA_ADMIN) {
+        adminArea.classList.add("liberado");
+        btnOcultarAdmin.style.display = "inline-block";
+        senhaAdminInput.value = "";
+        resultado.className = "status-box alerta";
+        resultado.innerHTML = "Área administrativa liberada. Envie a lista prévia para iniciar o check-in.";
+        arquivoInput.focus();
+      } else {
+        resultado.className = "status-box erro";
+        resultado.innerHTML = "Senha administrativa incorreta.";
+        senhaAdminInput.select();
+      }
+    }
+
+    btnLiberarAdmin.addEventListener("click", liberarAdmin);
+
+    senhaAdminInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        liberarAdmin();
+      }
+    });
+
+    btnOcultarAdmin.addEventListener("click", () => {
+      adminArea.classList.remove("liberado");
+      btnOcultarAdmin.style.display = "none";
+      resultado.className = "status-box alerta";
+      resultado.innerHTML = dados.length
+        ? "Área administrativa ocultada. O check-in continua liberado."
+        : "Área administrativa ocultada.";
+    });
+
+    function normalizar(valor) {
+      if (valor === undefined || valor === null) return "";
+      return String(valor)
+        .trim()
+        .replace(/\s+/g, "")
+        .replace(/[.\-\/]/g, "")
+        .toUpperCase();
+    }
+
+    function valorCelula(linha, indice) {
+      return linha[indice] !== undefined && linha[indice] !== null ? String(linha[indice]).trim() : "";
+    }
+
+    function nomeProvavel(linha) {
+      const possiveisColunasNome = [1, 2, 3, 4, 5];
+      for (const idx of possiveisColunasNome) {
+        const v = valorCelula(linha, idx);
+        if (v && !/^\d+$/.test(normalizar(v))) return v;
+      }
+      return "—";
+    }
+
+    function escapeHtml(texto) {
+      return String(texto)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function atualizarContadores() {
+      const total = dados.length;
+      const presentes = dados.filter(linha => valorCelula(linha, COL_PRESENCA) === "OK").length;
+      const pendentes = total - presentes;
+
+      totalRegistrosEl.textContent = total;
+      totalPresentesEl.textContent = presentes;
+      totalPendentesEl.textContent = pendentes;
+    }
+
+    function atualizarTabela() {
+      tabelaPreview.innerHTML = "";
+
+      if (!dados.length) {
+        tabelaPreview.innerHTML = '<tr><td colspan="5">Nenhum arquivo carregado.</td></tr>';
+        return;
+      }
+
+      dados.forEach((linha) => {
+        const status = valorCelula(linha, COL_PRESENCA) === "OK" ? "OK" : "Pendente";
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td><span class="pill ${status === "OK" ? "pill-ok" : "pill-no"}">${status}</span></td>
+          <td>${escapeHtml(valorCelula(linha, COL_ID))}</td>
+          <td>${escapeHtml(nomeProvavel(linha))}</td>
+          <td>${escapeHtml(valorCelula(linha, COL_CPF))}</td>
+          <td>${escapeHtml(valorCelula(linha, COL_RA))}</td>
+        `;
+
+        tabelaPreview.appendChild(tr);
+      });
+    }
+
+    function liberarInterface() {
+      buscaInput.disabled = false;
+      btnCheckin.disabled = false;
+      btnLimparBusca.disabled = false;
+      btnExportar.disabled = false;
+      btnResetar.disabled = false;
+      buscaInput.focus();
+    }
+
+    function bloquearInterface() {
+      buscaInput.disabled = true;
+      btnCheckin.disabled = true;
+      btnLimparBusca.disabled = true;
+      btnExportar.disabled = true;
+      btnResetar.disabled = true;
+    }
+
+    arquivoInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      nomeArquivoOriginal = file.name.replace(/\.[^/.]+$/, "") || "lista_presenca";
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const primeiraAba = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[primeiraAba];
+
+        const matriz = XLSX.utils.sheet_to_json(worksheet, {
+          header: 1,
+          defval: "",
+          raw: false
+        });
+
+        if (!matriz || matriz.length < 2) {
+          throw new Error("A planilha precisa ter cabeçalho na linha 1 e pelo menos uma linha de dados.");
+        }
+
+        cabecalhos = matriz[0].slice(0, 16);
+        while (cabecalhos.length < 16) cabecalhos.push("");
+        cabecalhos[COL_PRESENCA] = "Situação Presença";
+
+        dados = matriz.slice(1)
+          .filter(linha => linha.some(celula => String(celula).trim() !== ""))
+          .map(linha => {
+            const novaLinha = linha.slice(0, 16);
+            while (novaLinha.length < 16) novaLinha.push("");
+            if (!novaLinha[COL_PRESENCA]) novaLinha[COL_PRESENCA] = "";
+            return novaLinha;
+          });
+
+        liberarInterface();
+        atualizarContadores();
+        atualizarTabela();
+
+        resultado.className = "status-box ok";
+        resultado.innerHTML = `<strong>Lista carregada com sucesso.</strong><br>${dados.length} registros disponíveis para check-in.`;
+      } catch (erro) {
+        dados = [];
+        cabecalhos = [];
+        bloquearInterface();
+        atualizarContadores();
+        atualizarTabela();
+
+        resultado.className = "status-box erro";
+        resultado.innerHTML = `<strong>Erro ao carregar a lista.</strong><br>${escapeHtml(erro.message)}`;
+      }
+    });
+
+    function fazerCheckin() {
+      const termoOriginal = buscaInput.value.trim();
+      const termo = normalizar(termoOriginal);
+
+      if (!dados.length) {
+        resultado.className = "status-box alerta";
+        resultado.innerHTML = "Envie a lista antes de fazer o check-in.";
+        return;
+      }
+
+      if (!termo) {
+        resultado.className = "status-box alerta";
+        resultado.innerHTML = "Digite um CPF, RA ou ID de inscrição.";
+        buscaInput.focus();
+        return;
+      }
+
+      const encontrados = dados
+        .map((linha, index) => ({ linha, index }))
+        .filter(item => {
+          const id = normalizar(valorCelula(item.linha, COL_ID));
+          const cpf = normalizar(valorCelula(item.linha, COL_CPF));
+          const ra = normalizar(valorCelula(item.linha, COL_RA));
+          return termo === id || termo === cpf || termo === ra;
+        });
+
+      if (encontrados.length === 0) {
+        resultado.className = "status-box erro";
+        resultado.innerHTML = `<strong>Não encontrado.</strong><br>Nenhum registro corresponde a: ${escapeHtml(termoOriginal)}`;
+        buscaInput.select();
+        return;
+      }
+
+      if (encontrados.length > 1) {
+        resultado.className = "status-box alerta";
+        resultado.innerHTML = `<strong>Atenção: registro duplicado.</strong><br>Foram encontrados ${encontrados.length} registros com esse identificador. Verifique a lista original.`;
+        buscaInput.select();
+        return;
+      }
+
+      const linha = encontrados[0].linha;
+      const jaPresente = valorCelula(linha, COL_PRESENCA) === "OK";
+
+      if (jaPresente) {
+        resultado.className = "status-box alerta";
+        resultado.innerHTML = `
+          <strong>Presença já registrada anteriormente.</strong><br>
+          <strong>Nome:</strong> ${escapeHtml(nomeProvavel(linha))}<br>
+          <strong>ID:</strong> ${escapeHtml(valorCelula(linha, COL_ID))}<br>
+          <strong>CPF:</strong> ${escapeHtml(valorCelula(linha, COL_CPF))}<br>
+          <strong>RA:</strong> ${escapeHtml(valorCelula(linha, COL_RA))}
+        `;
+      } else {
+        linha[COL_PRESENCA] = "OK";
+
+        resultado.className = "status-box ok";
+        resultado.innerHTML = `
+          <strong>OK — presença confirmada.</strong><br>
+          <strong>Nome:</strong> ${escapeHtml(nomeProvavel(linha))}<br>
+          <strong>ID:</strong> ${escapeHtml(valorCelula(linha, COL_ID))}<br>
+          <strong>CPF:</strong> ${escapeHtml(valorCelula(linha, COL_CPF))}<br>
+          <strong>RA:</strong> ${escapeHtml(valorCelula(linha, COL_RA))}
+        `;
+      }
+
+      atualizarContadores();
+      atualizarTabela();
+      buscaInput.value = "";
+      buscaInput.focus();
+    }
+
+    btnCheckin.addEventListener("click", fazerCheckin);
+
+    buscaInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        fazerCheckin();
+      }
+    });
+
+    btnLimparBusca.addEventListener("click", () => {
+      buscaInput.value = "";
+      resultado.className = "status-box alerta";
+      resultado.innerHTML = "Campo limpo. Digite CPF, RA ou ID de inscrição para continuar.";
+      buscaInput.focus();
+    });
+
+    btnResetar.addEventListener("click", () => {
+      if (!dados.length) return;
+
+      const confirmar = confirm("Deseja realmente apagar todas as presenças marcadas como OK nesta sessão?");
+      if (!confirmar) return;
+
+      dados.forEach(linha => linha[COL_PRESENCA] = "");
+      atualizarContadores();
+      atualizarTabela();
+
+      resultado.className = "status-box alerta";
+      resultado.innerHTML = "As presenças foram resetadas nesta sessão.";
+      buscaInput.focus();
+    });
+
+    btnExportar.addEventListener("click", () => {
+      if (!dados.length) {
+        resultado.className = "status-box alerta";
+        resultado.innerHTML = "Nenhuma lista carregada para exportar.";
+        return;
+      }
+
+      const matrizExportacao = [cabecalhos, ...dados];
+      const ws = XLSX.utils.aoa_to_sheet(matrizExportacao);
+      const wb = XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(wb, ws, "Presenças");
+
+      const agora = new Date();
+      const dataHora = agora.toISOString().slice(0, 19).replace(/[-:T]/g, "");
+      XLSX.writeFile(wb, `${nomeArquivoOriginal}_presencas_${dataHora}.xlsx`);
+    });
+  </script>
+</body>
+</html>
